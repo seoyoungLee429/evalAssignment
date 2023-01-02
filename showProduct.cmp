@@ -1,0 +1,153 @@
+<aura:component  description="ProductInfo" controller="Evaluation2" implements="force:hasRecordId,force:lightningQuickActionWithoutHeader,flexipage:availableForAllPageTypes">
+    <!-- 변수 선언 -->
+    <aura:attribute name="listOppItem" type="List" default=""/>
+    <aura:attribute name="jobList" type="List" default=""/>
+    <aura:attribute name="listPrdItem" type="Object" default=""/>
+    <aura:attribute name="selectedItem" type="Object" default=""/>
+    <aura:attribute name="selectedLow" type="Object" default=""/>
+    <aura:attribute name="selectedPrdName" type="String" default=""/>
+    <aura:attribute name="selectedPrdPrice" type="String" default=""/>
+    <aura:attribute name="selectedPrdId" type="String" default=""/>
+    <aura:attribute name="modalFlag" type="Boolean" default="false"/>
+    <aura:attribute name="showSpinner" type="boolean" default="false"/> 
+    <aura:attribute name="recordId" type="String" />
+    <!-- 조건검색 팝업 -->
+    <aura:attribute name="searchPrItemModalYN" type="Boolean" default="false"/>    
+    <aura:handler name="init" value="{!this}" action="{!c.fnInit}" />
+    <lightning:layout>        
+        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+            <thead>
+                <tr class="slds-line-height_reset">
+                    <th class="" scope="col" width="">
+                        Seq
+                    </th>
+                    <th class="" scope="col" width="">
+                        Product
+                    </th>
+                    <th class="" scope="col" width="">
+                        List Price
+                    </th>
+                    <th class="" scope="col" width="">
+                        Unit Price
+                    </th>
+                    <th class="" scope="col" width="">
+                        Quantity
+                    </th>
+                    <th class="" scope="col" width="">
+                        TotalPrice
+                    </th>
+                    <th class="" scope="col" width="">
+                        Description
+                    </th>
+                    <th class="" scope="col" width="">
+                        Exchange Rate
+                    </th>
+                    <th class="" scope="col" width="">
+                        USD TotalPrice
+                    </th>
+                    <th class="" scope="col" width="">
+                        <div class="slds-truncate" title="Action">Action
+                            <lightning:button class="sortBtn" onclick="{!c.fnPlus}"
+                                              label="+">
+                            </lightning:button>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:if isTrue="{!v.listOppItem.length > 0}">
+                    <aura:iteration items="{!v.listOppItem}" var="obj" indexVar="idx">
+                        <tr id="{!idx}" class="" data-idx="{!idx}">
+                            <td>{!obj.SortOrder}
+                            </td>    
+                            <td aria-required="true">
+                                <aura:if isTrue="{!obj.Product2.Name == null}">
+                                    <lightning:button onclick="{!c.fnSearchProduct}" value="{!obj}" label="상품검색">
+                                    </lightning:button>
+                                    <aura:set attribute="else">
+                                        {!obj.Product2.Name}
+                                    </aura:set>
+                                </aura:if>
+                            </td>   
+                            <td>{!obj.ListPrice}
+                            </td>
+                            <td>
+                                <lightning:input id="{!idx}" type="number" disabled="false" value="{!obj.UnitPrice}" onchange="{!c.fnUnitPriceCh}"  />
+                            </td>
+                            <td>
+                                <lightning:input id="{!idx}" type="number" disabled="false" value="{!obj.Quantity}" onchange="{!c.fnQuantityCh}" />
+                            </td>
+                            <td>{!obj.TotalPrice}
+                            </td> 
+                            <td>
+                                <lightning:input id="{!idx}" type="text" disabled="false" value="{!obj.Description}" />
+                            </td>
+                            <td>{!obj.ExchangeRate__c}
+                            </td> 
+                            <td>{!obj.UsdTotalPrice__c}
+                            </td> 
+                            <td>
+                                <aura:if isTrue="{!idx != 0}">
+                                    <lightning:button onclick="{!c.fnMoveUp}" label="▲" value="{!idx}">
+                                    </lightning:button>
+                                </aura:if>                                
+                                <aura:if isTrue="{!(idx+1) != v.listOppItem.length}">
+                                	<lightning:button onclick="{!c.fnMoveDown}" label="▼" value="{!idx}">
+                                	</lightning:button>
+                                </aura:if>                                
+                                <lightning:button onclick="{!c.fnRemoveItem}" label="-" value="{!idx}">
+                                </lightning:button> 
+                            </td> 
+                        </tr>
+                    </aura:iteration>
+                    
+                    <aura:set attribute="else">
+                        <tr>
+                            <td colspan="12">
+                                <center>데이터가 없습니다.</center>
+                            </td>
+                        </tr>
+                    </aura:set>
+                </aura:if>
+            </tbody>
+        </table> 
+        <aura:if isTrue="{!v.showSpinner}">
+            <lightning:spinner alternativeText="Loading, Please Wait..." title="Loading, Please Wait..." variant="brand" size="large"/>
+        </aura:if>
+                            
+    </lightning:layout>
+    <div>
+         <lightning:button variant="neutral" label="Cancel" onclick="{!c.fnCancel}"/>    
+         <lightning:button variant="brand" label="Save" onclick="{!c.fnSave}"/>    
+         <lightning:button label="환율 Reset" onclick="{!c.fnResetExAll}"/>    
+    </div>   
+    <!-- 조건검색 버튼 Modal -->
+    <aura:if isTrue="{!v.modalFlag}">
+        <section role="dialog" tabindex="-3" class="slds-modal slds-fade-in-open slds-modal_small"
+                 style="z-index:9002 !important;">
+            <div class="slds-align_absolute-center slds-modal__container">
+                <div>
+                    <div class="slds-col modal-header slds-modal__header">
+                        <h2 class="title slds-text-heading--medium">
+                            Product
+                        </h2>
+                    </div>
+
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1"
+                         style="width: 1000px; height: auto;">
+                        <lightning:select name="selectedPrd" label="Select a Product" required="true" onchange="{!c.fnChoosePrd}">
+                           <aura:iteration items="{!v.listPrdItem}" var="prd">
+                               <option>{!prd.Product2Id} >> {!prd.Name} >> {!prd.UnitPrice}</option>
+                            </aura:iteration>                          
+                        </lightning:select>                        
+                    </div>
+                    <div class="slds-col modal-footer slds-modal__footer">
+                        <lightning:button variant="brand" label="선택" onclick="{!c.fnSelectPrd}"/>
+                        <lightning:button variant="brand" label="닫기" onclick="{!c.fnColseModal}"/>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" style="z-index:9001 !important;"></div>
+    </aura:if>    
+</aura:component>
